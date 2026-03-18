@@ -2,322 +2,239 @@
   import EnviarEmail from "./EnviarEmail.svelte";
   import EnviarWhatsApp from "./EnviarWhatsApp.svelte";
 
-  let saldo = "";
-  // Garante que o saldo sempre use ponto como separador decimal para parseFloat
-  $: saldo = saldo.replace(",", ".");
+  // Svelte 5 Runes for better state management
+  let saldo = $state("");
+  let saldoIndefinido = $state(false);
+  let caixas = $state([]);
+  let ultimaCaixaInput = $state(null);
 
-  // Converte o saldo para um número, ou 0 se for inválido
-  $: saldoNumerico = parseFloat(saldo) || 0;
+  // Derived values (computed)
+  let saldoNumerico = $derived(parseFloat(saldo.replace(",", ".")) || 0);
 
-  let caixas = [];
-  let ultimaCaixaInput;
-
-  // Foca no último input de valor unitário adicionado
-  $: {
-    if (ultimaCaixaInput) {
-      ultimaCaixaInput.focus();
-    }
-  }
-
-  let saldoIndefinido = false;
-
-  // Cálculo reativo do valor gasto total
-  $: valorGasto = caixas.reduce(
-    (total, caixa) => total + caixa.quantidade * caixa.valorUnitario,
-    0
+  let valorGasto = $derived(
+    caixas.reduce(
+      (total, caixa) => total + (caixa.quantidade * (parseFloat(String(caixa.valorUnitario).replace(",", ".")) || 0)),
+      0
+    )
   );
 
-  // Valor restante do saldo após os gastos
-  $: restante = saldoNumerico - valorGasto;
+  let restante = $derived(saldoNumerico - valorGasto);
 
-  // Adiciona uma nova caixa de item com valores padrão
+  // Effect to focus the last input when a new item is added
+  $effect(() => {
+    if (caixas.length > 0 && ultimaCaixaInput) {
+      ultimaCaixaInput.focus();
+    }
+  });
+
   function adicionarCaixa() {
-    caixas = [...caixas, { quantidade: 1, valorUnitario: "" }];
+    caixas.push({ quantidade: 1, valorUnitario: "" });
   }
 
-  // Remove uma caixa de item pelo seu índice
   function removerCaixa(index) {
-    caixas = caixas.filter((_, i) => i !== index);
+    caixas.splice(index, 1);
   }
 
-  // Atualiza um campo específico de uma caixa (não usado diretamente no template atual, mas boa prática)
-  function atualizarCaixa(index, campo, valor) {
-    caixas = caixas.map((caixa, i) =>
-      i === index ? { ...caixa, [campo]: parseFloat(valor) || 0 } : caixa
-    );
+  function handleKeyPress(e) {
+    if (e.key === "Enter") {
+      adicionarCaixa();
+    }
   }
 </script>
 
-<div class="">
-  <div class="card shadow-sm p-4 mb-4 topo-card">
-    <h1 class="card-title text-center mb-3">Calculadora de Gastos 💰</h1>
-    <p class="lead text-center text-muted">Gerencie seus gastos de forma simples e rápida.</p>
-    <hr />
-
-    {#if !saldoIndefinido}
-    <div class="mb-3" id="saldoSection">
-      <label for="saldoInput" class="form-label fs-5">Qual saldo você tem para gastar?</label>
-      <div class="input-group">
-        <span class="input-group-text">€</span>
-        <input
-          id="saldoInput"
-          type="text"
-          inputmode="decimal"
-          pattern="[0-9]*\\.?[0-9]*"
-          placeholder="Ex: 100.50"
-          bind:value={saldo}
-          class="form-control form-control-lg"
-        />
-        <button
-          class="btn btn-outline-danger"
-          aria-label="Limpar saldo"
-          on:click={() => (saldo = "")}
-        >
-          Zerar Saldo
-        </button>
-        <button
-          class="btn btn-outline-danger"
-          aria-label="Não sei o saldo"
-          on:click={() => {
-            saldoIndefinido = true;
-            saldo = "";
-          }}
-        >
-          Não sei
-        </button>
-      </div>
-    </div>
-    {/if}
-
-    <div class="d-flex justify-content-around mt-4 text-center resumo-valores">
+<div class="counter-container">
+  <!-- Status Cards (Fixed/Sticky at the top) -->
+  <div class="status-sticky-container">
+    <div class="status-grid">
       {#if !saldoIndefinido}
-      <div>
-        <p class="mb-1 text-muted">Saldo Atual:</p>
-        <p class="fs-4 fw-bold">R$ {saldoNumerico.toFixed(2)}</p>
-      </div>
+        <div class="status-card balance">
+          <span class="status-label">Saldo</span>
+          <span class="status-value">€ {saldoNumerico.toFixed(2)}</span>
+        </div>
       {/if}
-      <div>
-        <p class="mb-1 text-muted">Valor Gasto:</p>
-        <p class="fs-4 fw-bold">R$ {valorGasto.toFixed(2)}</p>
-      </div>
       
+      <div class="status-card spent">
+        <span class="status-label">Gasto</span>
+        <span class="status-value">€ {valorGasto.toFixed(2)}</span>
+      </div>
+
       {#if !saldoIndefinido}
-        <div id="saldoSection">
-          <p class="mb-1 text-muted">Restante:</p>
-          {#if saldoNumerico <= 0}
-            <p class="fs-4 fw-bold text-muted">R$ {restante.toFixed(2)}</p>
-          {:else if restante < 0}
-            <p class="fs-4 fw-bold text-danger animate__animated animate__shakeX">R$ {restante.toFixed(2)}</p>
-          {:else}
-            <p class="fs-4 fw-bold text-success animate__animated animate__pulse">R$ {restante.toFixed(2)}</p>
-          {/if}
+        <div class="status-card remaining" class:negative={restante < 0}>
+          <span class="status-label">Restante</span>
+          <span class="status-value">€ {restante.toFixed(2)}</span>
         </div>
       {/if}
     </div>
   </div>
 
-  <div class="card shadow-sm p-4 caixas-section">
-    <h2 class="card-title text-center mb-4">Itens a Comprar</h2>
-
-    {#each caixas as caixa, index (index)}
-      <div class="input-group mb-3 caixa-item animate__animated animate__fadeIn">
-        <select bind:value={caixa.quantidade} class="form-select">
-          {#each Array(10) as _, i}
-            <option value={i + 1}>{i + 1}</option>
-          {/each}
-        </select>
-
+  <div class="scroll-content">
+    <!-- Saldo Input Card -->
+  {#if !saldoIndefinido}
+    <div class="card p-3 mb-4">
+      <label for="saldoInput" class="form-label fw-bold">Quanto quer gastar hoje?</label>
+      <div class="input-group">
+        <span class="input-group-text bg-primary text-white border-0">€</span>
         <input
-          class="form-control"
-          type="number"
+          id="saldoInput"
+          type="text"
           inputmode="decimal"
-          placeholder="Valor Unitário"
-          bind:this={ultimaCaixaInput}
-          bind:value={caixa.valorUnitario}
-          min="0"
-          step="0.01"
-          on:keypress={(e) => {
-            if (e.key === "Enter") {
-              adicionarCaixa();
-            }
-          }}
+          placeholder="0.00"
+          bind:value={saldo}
+          class="form-control"
         />
-
-        <button
-          class="btn btn-outline-danger"
-          aria-label="Remover caixa"
-          on:click={() => removerCaixa(index)}
-        >
-          Remover
-        </button>
+        <button class="btn btn-light border" onclick={() => (saldo = "")}>Zerar</button>
+        <button class="btn btn-light border" onclick={() => (saldoIndefinido = true)}>Não sei</button>
       </div>
-    {/each}
-
-    <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
-      <button
-        class="btn btn-primary btn-lg"
-        on:click={adicionarCaixa}
-      >
-        ➕ Adicionar Item
-      </button>
-      <button
-        class="btn btn-outline-secondary btn-lg"
-        on:click={() => {
-          if (confirm("Tem certeza que deseja limpar todos os itens?")) {
-            caixas = [];
-          }
-        }}
-      >
-        Limpar Itens
+    </div>
+  {:else}
+    <div class="card p-3 mb-4 text-center">
+      <button class="btn btn-link text-decoration-none" onclick={() => (saldoIndefinido = false)}>
+        Definir um saldo limite?
       </button>
     </div>
+  {/if}
 
-    <hr class="my-4" />
+  <!-- Items List -->
+  <div class="items-section mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+      <h3 class="h5 mb-0 fw-bold">Itens da Compra</h3>
+      <span class="badge bg-secondary rounded-pill">{caixas.length} itens</span>
+    </div>
 
+    {#if caixas.length === 0}
+      <div class="text-center py-5 bg-white rounded-4 border-dashed">
+        <p class="text-muted mb-0">Nenhum item adicionado ainda.</p>
+      </div>
+    {:else}
+      {#each caixas as caixa, index}
+        <div class="item-card animate__animated animate__fadeInUp">
+          <div class="row g-2 align-items-center">
+            <div class="col-3">
+              <select bind:value={caixa.quantidade} class="form-select border-0 bg-light">
+                {#each Array(20) as _, i}
+                  <option value={i + 1}>{i + 1}x</option>
+                {/each}
+              </select>
+            </div>
+            <div class="col-6">
+              <div class="input-group">
+                <span class="input-group-text bg-transparent border-0 pe-1">€</span>
+                {#if index === caixas.length - 1}
+                  <input
+                    class="form-control border-0 bg-light"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="Valor"
+                    bind:this={ultimaCaixaInput}
+                    bind:value={caixa.valorUnitario}
+                    onkeypress={handleKeyPress}
+                  />
+                {:else}
+                  <input
+                    class="form-control border-0 bg-light"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="Valor"
+                    bind:value={caixa.valorUnitario}
+                  />
+                {/if}
+              </div>
+            </div>
+            <div class="col-3 text-end">
+              <button class="btn btn-link text-danger p-0" onclick={() => removerCaixa(index)}>
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      {/each}
+    {/if}
+  </div>
+
+  <!-- Actions -->
+  <div class="d-grid gap-2 mb-4">
+    <button class="btn btn-primary btn-lg py-3 shadow-sm" onclick={adicionarCaixa}>
+      <span class="me-2">➕</span> Adicionar Item
+    </button>
+    {#if caixas.length > 0}
+      <button class="btn btn-light border-0 text-muted" onclick={() => confirm("Limpar tudo?") && (caixas = [])}>
+        Limpar Lista
+      </button>
+    {/if}
+  </div>
+
+  <!-- Share -->
+  <div class="card p-3 bg-light border-0">
+    <p class="text-center text-muted small mb-2">Compartilhar resumo:</p>
     <div class="d-flex justify-content-center gap-3">
       <EnviarEmail valorGasto={valorGasto.toFixed(2)} />
       <EnviarWhatsApp valorGasto={valorGasto.toFixed(2)} />
     </div>
   </div>
-</div>
+</div> <!-- closes scroll-content -->
+</div> <!-- closes counter-container -->
 
 <style>
-  /* Importa as animações do Animate.css para efeitos visuais */
-  @import 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css';
-
-  /* Estilos Globais e de Layout */
-  :global(body) {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa; /* Um cinza claro para o fundo */
-    color: #343a40; /* Cor de texto padrão */
+  .counter-container {
+    max-width: 100%;
   }
 
-  .container {
-    max-width: 768px; /* Largura máxima para centralizar o conteúdo */
+  .status-sticky-container {
+    position: sticky;
+    top: 0; /* Sticks to the top of its parent */
+    z-index: 100;
+    background-color: #f4f6f9; /* Match body background */
+    padding: 15px 0 15px 0;
+    margin: 0;
   }
 
-  /* Estilos para os Cards */
-  .card {
-    border-radius: 0.75rem; /* Bordas mais arredondadas */
-    border: none; /* Remove a borda padrão do Bootstrap */
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Always 3 columns */
+    gap: 8px;
   }
 
-  .topo-card {
-    background: linear-gradient(135deg, #e3f2fd, #bbdefb); /* Gradiente suave */
-    color: #212529;
+  .status-card {
+    background: white;
+    padding: 12px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   }
 
-  .caixas-section {
-    background-color: #ffffff;
+  .status-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
   }
 
-  /* Títulos */
-  h1, h2 {
-    color: #007bff; /* Azul primário */
-    font-weight: 600;
+  .status-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2c3e50;
   }
 
-  /* Input de Saldo */
-  .input-group-text {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-    border-radius: 0.5rem 0 0 0.5rem;
+  .remaining .status-value {
+    color: #28a745;
   }
 
-  .form-control-lg {
-    font-size: 1.25rem;
-    padding: 0.75rem 1rem;
-    border-radius: 0 0.5rem 0.5rem 0;
+  .remaining.negative .status-value {
+    color: #dc3545;
   }
 
-  /* Botões */
-  .btn-primary {
-    background-color: #28a745; /* Um verde vibrante */
-    border-color: #28a745;
-    transition: all 0.3s ease-in-out;
+  .item-card {
+    background: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
   }
 
-  .btn-primary:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
-    transform: translateY(-2px); /* Pequeno efeito de elevação */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .btn-outline-danger {
-    transition: all 0.3s ease-in-out;
-  }
-
-  .btn-outline-danger:hover {
-    background-color: #dc3545;
-    color: white;
-  }
-
-  .btn-outline-secondary {
-    transition: all 0.3s ease-in-out;
-  }
-
-  .btn-outline-secondary:hover {
-    background-color: #6c757d;
-    color: white;
-  }
-
-  /* Resumo de Valores (Saldo, Gasto, Restante) */
-  .resumo-valores div {
-    flex: 1;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    background-color: #f0f8ff; /* Fundo suave para os valores */
-    margin: 0 5px;
-  }
-
-  .resumo-valores p {
-    margin-bottom: 0.25rem;
-  }
-
-  /* Estilos específicos para o restante */
-  .text-success {
-    color: #28a745 !important;
-  }
-
-  .text-danger {
-    color: #dc3545 !important;
-  }
-
-  /* Itens da Caixa */
-  .caixa-item .form-select,
-  .caixa-item .form-control {
-    border-radius: 0.375rem; /* Bordas arredondadas para inputs e selects */
-  }
-
-  .caixa-item .btn {
-    border-radius: 0.375rem;
-  }
-
-  /* Estilos responsivos */
-  @media (max-width: 576px) {
-    .d-md-flex {
-      flex-direction: column;
-    }
-    .d-grid {
-      display: flex;
-      flex-direction: column;
-    }
-    .btn-lg {
-      width: 100%;
-    }
-    .input-group > .form-control, .input-group > .form-select {
-        flex: 1 1 auto;
-        min-width: 0;
-    }
-    .input-group > :not(:first-child):not(.dropdown-menu):not(.form-floating) {
-        margin-left: 0.5rem; /* Espaçamento entre o input e o botão "Zerar Saldo" */
-    }
-  }
-
-  /* Classes auxiliares (manter se quiser esconder completamente) */
-  .some {
-    display: none;
+  .border-dashed {
+    border: 2px dashed #e0e0e0;
   }
 </style>

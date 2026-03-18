@@ -1,90 +1,92 @@
 <script>
   import Mercados from './lib/components/Mercados.svelte';
   import Counter from './lib/components/Counter.svelte';
+  import BottomNav from './lib/components/BottomNav.svelte';
+  import { activeTab } from './lib/stores/store.js';
 
-  // let options = {
-  //   slidesPerView: 1,
-  //   spaceBetween: 10,
-  //   pagination: {
-  //     el: '.swiper-pagination',
-  //     clickable: true,
-  //   },
-  //   navigation: {
-  //     nextEl: '.swiper-button-next',
-  //     prevEl: '.swiper-button-prev',
-  //   },
-  // };
-
-  
-
-  
+  $: tab = $activeTab;
 </script>
 
-<main class="">
-   <!--<div class="text-center mb-5">
-    <h1 class="display-4 fw-bold text-primary animate__animated animate__fadeInDown">
-      💰 PoupaPoupa 💸
-    </h1>
-    <p class="lead text-muted animate__animated animate__fadeInUp">
-      Gerencie seus gastos de forma inteligente e economize!
-    </p>
-  </div> -->
+<div class="app-container">
+  <main class="app-content">
+    {#if tab === 'home'}
+      <div class="tab-content animate__animated animate__fadeIn">
+        <Counter />
+      </div>
+    {:else if tab === 'market'}
+      <div class="tab-content animate__animated animate__fadeIn">
+        <Mercados />
+      </div>
+    {/if}
+  </main>
 
-  <div class="card shadow-lg p-md-5 p-3 rounded-4 animate__animated animate__zoomIn">
-      <Counter />
-      <Mercados />
-  </div>
-
-  <footer class="text-center mt-5 text-muted">
-    <p>&copy; {new Date().getFullYear()} PoupaPoupa. Todos os direitos reservados ao Renatinho.</p>
+  <footer class="app-footer-text text-center text-muted py-3 pb-5 mb-5">
+    <p>&copy; {new Date().getFullYear()} PoupaPoupa. Por Renatinho.</p>
   </footer>
-</main>
+
+  <BottomNav />
+</div>
 
 <style>
-  /* Importa as animações do Animate.css (certifique-se de que está no seu index.html) */
   @import 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css';
 
   :global(body) {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f2f5; /* Um cinza claro suave para o fundo */
-    color: #343a40; /* Cor de texto padrão */
-    line-height: 1.6;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f4f6f9;
+    color: #2c3e50;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
   }
 
-  .container {
-    max-width: 800px; /* Largura máxima para centralizar o conteúdo */
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-top: 0; /* No space needed for header anymore */
+    padding-bottom: 70px; /* Space for bottom nav */
   }
 
-  .display-4 {
-    font-size: calc(1.75rem + 1.5vw); /* Torna o título responsivo */
-    color: #007bff; /* Cor primária do Bootstrap */
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  .app-content {
+    flex: 1;
+    padding: 0 15px 15px 15px; /* Removed top padding */
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
   }
 
-  .lead {
-    font-size: 1.25rem;
-    color: #6c757d;
+  .tab-content {
+    width: 100%;
   }
 
-  .card {
-    border: none; /* Remove a borda padrão do Bootstrap */
-    border-radius: 1.25rem; /* Bordas mais arredondadas */
-    background-color: #ffffff; /* Fundo branco para o card */
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Sombra mais pronunciada e suave */
-    transition: all 0.3s ease-in-out; /* Transição suave para futuras interações */
+  .app-footer-text {
+    font-size: 0.8rem;
+    opacity: 0.6;
   }
 
-  .card:hover {
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15); /* Sombra um pouco maior no hover */
+  /* Override generic cards for a more modern mobile look */
+  :global(.card) {
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    margin-bottom: 20px !important;
   }
 
-  .my-4 {
-    border-top: 1px solid #e9ecef; /* Linha divisória mais suave */
+  /* Make sure inputs look good on mobile */
+  :global(.form-control, .form-select) {
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    border: 1px solid #e0e0e0 !important;
   }
 
-  footer {
-    padding: 20px 0;
-    font-size: 0.9em;
-    color: #888;
+  :global(.form-control:focus, .form-select:focus) {
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+    border-color: #007bff !important;
+  }
+
+  :global(.btn) {
+    border-radius: 12px !important;
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
   }
 </style>
