@@ -237,4 +237,8 @@
   .border-dashed {
     border: 2px dashed #e0e0e0;
   }
+    input#saldoInput.form-control{
+    border-radius: 0px 12px 12px 0px !important;
+    
+}
 </style>
